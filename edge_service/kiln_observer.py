@@ -56,6 +56,9 @@ def kiln_observer(capture_interval = 1000):
         # write data to history.json
         write_temperature(HISTORY_FILE_SUBDIR, HISTORY_FILE_NAME, temperature, time_stamp)
 
+        # push temperature data to server
+        # TODO: implement POST request to API on server
+        
         # wait until next image shall be taken
         time.sleep(CAPTURE_INTERVAL / 1000)
 
