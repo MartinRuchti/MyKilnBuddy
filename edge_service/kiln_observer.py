@@ -114,11 +114,13 @@ def extract_termperature(picture_file_subdir, image_file_name):
     for char in return_char_list:
         temperature = temperature + str(char)
             
-    # only take string before Â° and convert to integer and return
-    if(str.split(temperature, 'Â°')[0].__contains__("NA") or len(temperature) < 2):
+    # only take string before ° and convert to integer and return
+    if DEBUG:
+        print("Image processed. Temperature string: " + temperature)
+    if(str.split(temperature, '°')[0].__contains__("NA") or len(temperature) < 2):
         number = -1      
     else:
-        number = int(str.split(temperature, 'Â°')[0])  
+        number = int(str.split(temperature, '°')[0])  
 
     if DEBUG:
         print("Image processed. Temperature: " + str(number))
