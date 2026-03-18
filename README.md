@@ -1,6 +1,7 @@
-# MyKilnBuddy
+# MyKilnBuddy 🚧 Work in Progress
 
 MyKilnBuddy is a software, with which you can monitor your analog pottery firing kiln display and read the temperature values on your mobile device.
+
 Note: This software is still in construction and will undergo quite some change in the future.
 ---
 
