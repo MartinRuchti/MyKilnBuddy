@@ -143,3 +143,9 @@ def write_temperature(history_file_subdir, history_file_name, temperature, time_
     # write new data to history file
     with open(history_file_path, 'w', encoding='utf-8') as file:
         json.dump(temperaturdaten, file, ensure_ascii=False, indent=4)
+
+if __name__ == "__main__":
+
+    # run the main functionality
+    # TODO: add argparse for time interval to be set
+    kiln_observer(1000)
