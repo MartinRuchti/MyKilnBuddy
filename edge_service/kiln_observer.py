@@ -29,13 +29,13 @@ RUN = True
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 #
 # relative file path for pictures
-PICTURE_FILE_SUBDIR = os.path.join(DIR_PATH,'/pictures')
+PICTURE_FILE_SUBDIR = os.path.join(DIR_PATH,'pictures')
 #
 # relative file path for history file
-HISTORY_FILE_SUBDIR = os.path.join(DIR_PATH,'/history')
+HISTORY_FILE_SUBDIR = os.path.join(DIR_PATH,'history')
 #
 # history file name
-HISTORY_FILE_NAME = '/history.json'
+HISTORY_FILE_NAME = 'history.json'
 #
 # for debug purpose. Set to 'True', to show messages and more output
 DEBUG = True
@@ -47,6 +47,7 @@ def kiln_observer(capture_interval = 1000):
     
     while RUN:
         # capture new picture with webcam
+        print("PICTURE_FILE_SUBDIR: " + PICTURE_FILE_SUBDIR)
         image_file_name, time_stamp = capture_new_image(PICTURE_FILE_SUBDIR)
 
         # extract temperature reading
@@ -73,15 +74,17 @@ def capture_new_image(picture_file_subdir):
         current_time_stamp = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
 
         # set filename
-        filename = current_time_stamp + "temperature.png"
+        filename = current_time_stamp + "_temperature.png"
 
         # write image to file with datetime timestamp as prefix   
         cv2.imwrite(os.path.join(picture_file_subdir, filename), frame)  
         if DEBUG:
             # show image until key is pressed
-            cv2.imshow(filename, frame)  
+            print("File name is: " + filename)
+            print("Folder is: " + picture_file_subdir)
+            cv2.imshow('window_handle', frame)  
             cv2.waitKey(0)                      
-            cv2.destroyWindow(filename)       
+            cv2.destroyWindow('window_handle')       
     else:
         raise Exception('Error occurred in capture_new_image: Image could not be captured')
 
@@ -108,11 +111,11 @@ def extract_termperature(picture_file_subdir, image_file_name):
     for char in return_char_list:
         temperature = temperature + str(char)
             
-    # only take string before ° and convert to integer and return
-    if(str.split(temperature, '°')[0].__contains__("NA") or len(temperature) < 2):
+    # only take string before Â° and convert to integer and return
+    if(str.split(temperature, 'Â°')[0].__contains__("NA") or len(temperature) < 2):
         number = -1      
     else:
-        number = int(str.split(temperature, '°')[0])  
+        number = int(str.split(temperature, 'Â°')[0])  
 
     if DEBUG:
         print("Image processed. Temperature: " + number)
