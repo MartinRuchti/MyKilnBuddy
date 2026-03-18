@@ -1,3 +1,7 @@
+# 
+# TODO: add header, clean up, comment
+# 
+
 # import the necessary packages
 from imutils.perspective import four_point_transform
 from imutils import contours
