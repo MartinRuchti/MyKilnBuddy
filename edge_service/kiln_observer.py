@@ -54,7 +54,7 @@ def kiln_observer(capture_interval = 1000):
         temperature = extract_termperature(PICTURE_FILE_SUBDIR, image_file_name)
 
         # write data to history.json
-        write_temperature(HISTORY_FILE_SUBDIR, temperature, time_stamp)
+        write_temperature(HISTORY_FILE_SUBDIR, HISTORY_FILE_NAME, temperature, time_stamp)
 
         # wait until next image shall be taken
         time.sleep(CAPTURE_INTERVAL / 1000)
@@ -118,7 +118,7 @@ def extract_termperature(picture_file_subdir, image_file_name):
         number = int(str.split(temperature, 'Â°')[0])  
 
     if DEBUG:
-        print("Image processed. Temperature: " + number)
+        print("Image processed. Temperature: " + str(number))
 
     return number
 
@@ -144,6 +144,9 @@ def write_temperature(history_file_subdir, history_file_name, temperature, time_
             "temperatur": temperature})
     
     # write new data to history file
+    if DEBUG:
+        print("Writing .json file to: " + history_file_path)
+        
     with open(history_file_path, 'w', encoding='utf-8') as file:
         json.dump(temperaturdaten, file, ensure_ascii=False, indent=4)
 
