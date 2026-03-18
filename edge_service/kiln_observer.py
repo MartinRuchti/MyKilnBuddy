@@ -74,7 +74,7 @@ def capture_new_image(picture_file_subdir):
 
     if success:
         # get current time stamp from datetime
-        current_time_stamp = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        current_time_stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # set filename
         filename = current_time_stamp + "_temperature.png"
