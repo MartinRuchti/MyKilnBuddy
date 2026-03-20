@@ -8,8 +8,6 @@ from imutils import contours
 import imutils
 import cv2
 
-view_errors = True
-
 # each digit on the display as segment look-up
 DIGITS_LOOKUP = {
 	(1, 1, 1, 0, 1, 1, 1): 0,
@@ -27,6 +25,9 @@ DIGITS_LOOKUP = {
     (1, 1, 0, 0, 1, 0, 1): 'C'
 }
 def getNumberFromImage(filePathName, debug = False):
+
+    #set internal debug flag for NA numbers to the general debug flag
+    view_errors = debug
 
     digitsOrig = getNumberFromImageInternal(filePathName, debug)
     digits = digitsOrig
