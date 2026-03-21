@@ -48,20 +48,29 @@ DEBUG_OCV = False
 # Main service - should always be running, when edge is active
 # capture interval can be changed for various use cases
 
-def kiln_observer(capture_interval, anon_key, x_api_key):
+def kiln_observer(api_url, capture_interval, anon_key, x_api_key):
     
     # create API object
-    api = API.RestAPICalls('https://lgvhvdvlcjsznliufwrk.supabase.co/functions/v1/datapoints-api', anon_key, x_api_key)
+    api = API.RestAPICalls(api_url, anon_key, x_api_key)
     
+    # show subdirectory of pictures, to find for debugging
+    if DEBUG:
+            print("PICTURE_FILE_SUBDIR: " + PICTURE_FILE_SUBDIR)
+
     while RUN:
         # capture new picture with webcam
-        print("PICTURE_FILE_SUBDIR: " + PICTURE_FILE_SUBDIR)
+        if DEBUG:
+            print("Taking the picture ...")
         image_file_name, time_stamp = capture_new_image(PICTURE_FILE_SUBDIR)
 
         # extract temperature reading
+        if DEBUG:
+            print("Extracting Temperature ...")
         temperature = extract_termperature(PICTURE_FILE_SUBDIR, image_file_name)
 
         # write data to history.json
+        if DEBUG:
+            print("Writing Temperature: " str(temperature) + " to history ...")
         write_temperature(HISTORY_FILE_SUBDIR, HISTORY_FILE_NAME, temperature, time_stamp)
 
         # push temperature data to server
@@ -213,4 +222,4 @@ if __name__ == "__main__":
         parser.error("-t/--time, -a1/--anon, and -a2/--api must be specified")
     else:
         # start service
-        kiln_observer(args.time, args.anon, args.api)
+        kiln_observer(args.url, args.time, args.anon, args.api)
