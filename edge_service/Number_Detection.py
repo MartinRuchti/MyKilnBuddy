@@ -1,14 +1,20 @@
-# 
-# TODO: add header, clean up, comment
-# 
+# LIBRARY TO AXTRACT NUMBERS FROM SEGMENT DISPLAY
+# AUTHOR: MARTIN RUCHTI
+# CONTACT: info@martin-ruchti.com
 
-# import the necessary packages
+#
+# NOTE: This library is inteded to be used for detecting numbers on a Nabertherm 
+#       pottery kiln. Other segmented displays might also work, but wheren't tested
+#
+
+# IMPORTS
 from imutils.perspective import four_point_transform
 from imutils import contours
 import imutils
 import cv2
 
-# each digit on the display as segment look-up
+# LOOKUP FOR SEGMENT NUMBERS
+# special segments for '°', since display doesn't allways show full circle in pictures
 DIGITS_LOOKUP = {
 	(1, 1, 1, 0, 1, 1, 1): 0,
 	(0, 0, 1, 0, 0, 1, 0): 1,
@@ -24,14 +30,21 @@ DIGITS_LOOKUP = {
     (1, 1, 1, 0, 0, 0, 0): '°',
     (1, 1, 0, 0, 1, 0, 1): 'C'
 }
-def getNumberFromImage(filePathName, debug = False):
 
-    #set internal debug flag for NA numbers to the general debug flag
-    view_errors = debug
+# MAIN FUNCTIONALITY TO TRANSFORM PICTURE TO NUMBER
+# This function is called from other scripts, when detection is needed
+def getNumberFromImage(filePathName, debug = False):
 
     digitsOrig = getNumberFromImageInternal(filePathName, debug)
     digits = digitsOrig
 
+    # 
+    # NOTE: Sometimes, the black and white schemes of the picture have either segments, that are fused together, 
+    #       or segments, that are separated, where they souldn't. For this, on fail there are some steps of erode and 
+    #       dillute performed, in the hope, to detect the right number. This enhaces stability of detection.
+    # 
+
+    # initialize variables to control, whether dilution had success
     diluteFailed = False
     diluteFailed2 = False
 
@@ -65,6 +78,8 @@ def getNumberFromImage(filePathName, debug = False):
             print("===============================> SAVED BY DILUTE!")
         return digits
 
+# INTERNAL FUNCTION TO WRAP THE MAJORITY OF THE FUNCTIONALITY
+# This Function should only be called from this script
 def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False, erode=False):
     # load image
     image = cv2.imread(filePathName)
@@ -117,7 +132,7 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
         # dilate black areas to connect the parts of 0s and Cs
         thresh = cv2.dilate(thresh, (7, 7), iterations=2)
     elif dilate2:
-        thresh = cv2.dilate(thresh, (7, 7), iterations=4) #7
+        thresh = cv2.dilate(thresh, (7, 7), iterations=4) # might also try with 7, for some use cases
     elif erode:
         thresh = cv2.erode(thresh, (7, 7), iterations=3)
 
@@ -132,6 +147,7 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
         cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
     digitCnts = []
+
     # loop over the digit area candidates
     for c in cnts:
         # compute the bounding box of the contour
@@ -198,6 +214,7 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
             # 50% of the area, mark the segment as "on"
             if total / float(area) > 0.5:
                 on[i]= 1
+
         # lookup the digit and draw it on the image
         #check if tuple is contained
         if DIGITS_LOOKUP.__contains__(tuple(on)):
@@ -211,17 +228,19 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
             else:
                 digit = "NA"
         
+        # add display of detected areas in picture for debug purposes
         digits.append(digit)
         cv2.rectangle(output, (x, y), (x + w, y + h), (0, 255, 0), 1)
         cv2.putText(output, str(digit), (x - 2, y - 2),
             cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 0), 2)
 
+    # show debug output
     if debug:
         newfileName = str.split(filePathName, '.')[0] + "__CHECK.jpg"
         cv2.imwrite(newfileName, output)
     
     # if desirable, errernous pictures can be shown
-    if(view_errors and digits.__contains__("NA")):
+    if(debug and digits.__contains__("NA")):
         cv2.imshow("thres", thresh)
         cv2.imshow("Output", output)
         cv2.waitKey(0)
