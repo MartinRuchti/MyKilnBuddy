@@ -12,6 +12,7 @@ from imutils.perspective import four_point_transform
 from imutils import contours
 import imutils
 import cv2
+import numpy as np
 
 # LOOKUP FOR SEGMENT NUMBERS
 # special segments for '°', since display doesn't allways show full circle in pictures
@@ -127,10 +128,42 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
             displayCnt = approx
             break
 	
-    # extract the thermostat display, apply a perspective transform
-    # to it
-    transformed = four_point_transform(gray, displayCnt.reshape(4, 2))
-    output = four_point_transform(image, displayCnt.reshape(4, 2))
+    # optimized perspective transform, to always work on a perfect display
+    pts = displayCnt.reshape(4, 2).astype("float32")
+
+    # sort points
+    rect = np.zeros((4, 2), dtype="float32")
+
+    s = pts.sum(axis=1)
+    rect[0] = pts[np.argmin(s)]  # top-left
+    rect[2] = pts[np.argmax(s)]  # bottom-right
+    diff = np.diff(pts, axis=1)
+    rect[1] = pts[np.argmin(diff)]  # top-right
+    rect[3] = pts[np.argmax(diff)]  # bottom-left
+
+    # calculate target rectangle
+    # width
+    widthA = np.linalg.norm(rect[2] - rect[3])
+    widthB = np.linalg.norm(rect[1] - rect[0])
+    maxWidth = int(max(widthA, widthB))
+
+    # hight
+    heightA = np.linalg.norm(rect[1] - rect[2])
+    heightB = np.linalg.norm(rect[0] - rect[3])
+    maxHeight = int(max(heightA, heightB))
+
+    # calc target nodes
+    dst = np.array([
+    [0, 0],
+    [maxWidth - 1, 0],
+    [maxWidth - 1, maxHeight - 1],
+    [0, maxHeight - 1]
+    ], dtype="float32")
+
+    # perform perspective transform
+    M = cv2.getPerspectiveTransform(rect, dst)
+    transformed = cv2.warpPerspective(gray, M, (maxWidth, maxHeight))
+    output = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
 
     # replaced with adaptive thresolding to account for poor lighting
     thresh = cv2.adaptiveThreshold(transformed,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
@@ -143,7 +176,7 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
         # dilate black areas to connect the parts of 0s and Cs
         thresh = cv2.dilate(thresh, (7, 7), iterations=4) # might also try with 2, for some use cases
     elif dilate2:
-        thresh = cv2.dilate(thresh, (7, 7), iterations=7) # might also try with 4, for some use cases
+        thresh = cv2.dilate(thresh, (7, 7), iterations=10) # might also try with 4, for some use cases
     elif erode:
         thresh = cv2.erode(thresh, (7, 7), iterations=3)
 
