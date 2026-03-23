@@ -127,43 +127,68 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
         if len(approx) == 4:
             displayCnt = approx
             break
-	
-    # optimized perspective transform, to always work on a perfect display
-    pts = displayCnt.reshape(4, 2).astype("float32")
+
+    # find rotation
+    rect = cv2.minAreaRect(displayCnt)
+    angle = rect[-1]
+
+    # correct angle with opencv
+    if angle < -45:
+        angle = 90 + angle
+
+    (h, w) = image.shape[:2]
+    center = (w // 2, h // 2)
+
+    # get rotation matrix
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+
+    # rotate image
+    rotated = cv2.warpAffine(image, M, (w, h))
+    gray_rotated = cv2.warpAffine(gray, M, (w, h))
+
+    # transform contour
+    box = cv2.boxPoints(rect)
+    box = np.int32(box)
+
+    # transform points
+    ones = np.ones(shape=(len(box), 1))
+    points_ones = np.hstack([box, ones])
+    transformed_points = M.dot(points_ones.T).T
+
+    # warp perspective
+    rect_pts = transformed_points.astype("float32")
 
     # sort points
-    rect = np.zeros((4, 2), dtype="float32")
+    s = rect_pts.sum(axis=1)
+    rect_sorted = np.zeros((4, 2), dtype="float32")
+    rect_sorted[0] = rect_pts[np.argmin(s)]
+    rect_sorted[2] = rect_pts[np.argmax(s)]
 
-    s = pts.sum(axis=1)
-    rect[0] = pts[np.argmin(s)]  # top-left
-    rect[2] = pts[np.argmax(s)]  # bottom-right
-    diff = np.diff(pts, axis=1)
-    rect[1] = pts[np.argmin(diff)]  # top-right
-    rect[3] = pts[np.argmax(diff)]  # bottom-left
+    diff = np.diff(rect_pts, axis=1)
+    rect_sorted[1] = rect_pts[np.argmin(diff)]
+    rect_sorted[3] = rect_pts[np.argmax(diff)]
 
-    # calculate target rectangle
-    # width
-    widthA = np.linalg.norm(rect[2] - rect[3])
-    widthB = np.linalg.norm(rect[1] - rect[0])
+    # calculate target size
+    widthA = np.linalg.norm(rect_sorted[2] - rect_sorted[3])
+    widthB = np.linalg.norm(rect_sorted[1] - rect_sorted[0])
     maxWidth = int(max(widthA, widthB))
 
-    # hight
-    heightA = np.linalg.norm(rect[1] - rect[2])
-    heightB = np.linalg.norm(rect[0] - rect[3])
+    heightA = np.linalg.norm(rect_sorted[1] - rect_sorted[2])
+    heightB = np.linalg.norm(rect_sorted[0] - rect_sorted[3])
     maxHeight = int(max(heightA, heightB))
 
-    # calc target nodes
     dst = np.array([
-    [0, 0],
-    [maxWidth - 1, 0],
-    [maxWidth - 1, maxHeight - 1],
-    [0, maxHeight - 1]
+        [0, 0],
+        [maxWidth - 1, 0],
+        [maxWidth - 1, maxHeight - 1],
+        [0, maxHeight - 1]
     ], dtype="float32")
 
-    # perform perspective transform
-    M = cv2.getPerspectiveTransform(rect, dst)
-    transformed = cv2.warpPerspective(gray, M, (maxWidth, maxHeight))
-    output = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
+    # Warp
+    M_persp = cv2.getPerspectiveTransform(rect_sorted, dst)
+
+    transformed = cv2.warpPerspective(gray_rotated, M_persp, (maxWidth, maxHeight))
+    output = cv2.warpPerspective(rotated, M_persp, (maxWidth, maxHeight))
 
     # replaced with adaptive thresolding to account for poor lighting
     thresh = cv2.adaptiveThreshold(transformed,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
