@@ -39,6 +39,9 @@ HISTORY_FILE_SUBDIR = os.path.join(DIR_PATH,'history')
 # history file name
 HISTORY_FILE_NAME = 'history.json'
 #
+# store local images for further analysis
+STORE_LOCALLY = False
+#
 # for debug purpose. Set to 'True', to show messages and more output
 DEBUG = False
 #
@@ -202,12 +205,18 @@ if __name__ == "__main__":
                         help="anon key for authentication required. Add with -a1 XXX")
     parser.add_argument("-a2", "--api", type=str,
                         help="x-api-key for authentication required. Add with -a2 YYY")
+    parser.add_argument("-s", "--store"action="store_true",
+                        help="Store camera pictures locally. Activate with -s")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Show debug output. Activate with -v")
     parser.add_argument("-debug", "--debug_ocv", action="store_true",
                         help="Show openCV debug pictures. Activate with -debug")
 
     args = parser.parse_args()
+    
+    #  read, if user wants pictures to be kept locally
+    if args.store:
+        STORE_LOCALLY=True
     
     #  read, if user wants debug output
     if args.verbose:
