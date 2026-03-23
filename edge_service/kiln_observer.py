@@ -74,7 +74,7 @@ def kiln_observer(api_url, capture_interval, anon_key, x_api_key):
 
         # write data to history.json
         if DEBUG:
-            print("Writing Temperature: " str(temperature) + " to history ...")
+            print("Writing Temperature: " + str(temperature) + " to history ...")
         write_temperature(HISTORY_FILE_SUBDIR, HISTORY_FILE_NAME, temperature, time_stamp)
 
         # push temperature data to server
@@ -156,13 +156,13 @@ def extract_termperature(picture_file_subdir, image_file_name):
     for char in return_char_list:
         temperature = temperature + str(char)
             
-    # only take string before Â° and convert to integer and return
+    # only take string before ° and convert to integer and return
     if DEBUG:
         print("Image processed. Temperature string: " + temperature)
-    if(str.split(temperature, 'Â°')[0].__contains__("NA") or len(temperature) < 2):
+    if(str.split(temperature, '°')[0].__contains__("NA") or len(temperature) < 2):
         number = -1      
     else:
-        number = int(str.split(temperature, 'Â°')[0])  
+        number = int(str.split(temperature, '°')[0])  
 
     if DEBUG:
         print("Image processed. Temperature: " + str(number))
@@ -209,7 +209,7 @@ if __name__ == "__main__":
                         help="anon key for authentication required. Add with -a1 XXX")
     parser.add_argument("-a2", "--api", type=str,
                         help="x-api-key for authentication required. Add with -a2 YYY")
-    parser.add_argument("-s", "--store"action="store_true",
+    parser.add_argument("-s", "--store", action="store_true",
                         help="Store camera pictures locally. Activate with -s")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Show debug output. Activate with -v")
