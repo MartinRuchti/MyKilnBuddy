@@ -84,6 +84,17 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
     # load image
     image = cv2.imread(filePathName)
     
+    # rotate image, to decrease errors due to bad camera placement
+    # later add automatic detection of angle
+    (h, w) = image.shape[:2]
+    center = (w // 2, h // 2)
+    # Degree in clockwise direction
+    angle = 5
+
+    # rotate
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+    image = cv2.warpAffine(image, M, (w, h))
+
     # set helper bool to know if char ° is already detected - erase garbage after C
     celsius_char_detected = False
 

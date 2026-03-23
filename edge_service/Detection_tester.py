@@ -39,7 +39,7 @@ def extract_termperature(image_file_name) -> None:
     image_path = os.path.join(PICTURE_FILE_SUBDIR, image_file_name)
     
     try:
-        return_char_list = nd.getNumberFromImage(image_path, DEBUG_OCV)
+        return_char_list = nd.getNumberFromImage(image_path, True)
     except:
         return_char_list = "NA"   
     
@@ -70,8 +70,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
         
     # check if all needed input is given
-    if not args.picture:
+    if not args.picture_name:
         parser.error("-p <your_picture_name> required!")
     else:
         # test image
-        extract_termperature(args.picture)
+        extract_termperature(args.picture_name)
