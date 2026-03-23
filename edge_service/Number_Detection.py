@@ -40,7 +40,7 @@ def getNumberFromImage(filePathName, debug = False):
 
     # 
     # NOTE: Sometimes, the black and white schemes of the picture have either segments, that are fused together, 
-    #       or segments, that are separated, where they souldn't. For this, on fail there are some steps of erode and 
+    #       or segments, that are separated, where they shouldn't. For this, on fail there are some steps of erode and 
     #       dillute performed, in the hope, to detect the right number. This enhaces stability of detection.
     # 
 
@@ -48,34 +48,49 @@ def getNumberFromImage(filePathName, debug = False):
     diluteFailed = False
     diluteFailed2 = False
 
-    # check if NAs occure and dilate if so
+    # check if errors occured
+    # if not, return result, otherwise dilate picture
     if(not digits_contain_errors(digitsOrig)):
+        if debug:
+            print("First number detection was successful.")
         return digitsOrig
     else:
+        if debug:
+            print("Failed! Trying number detection with dillute 1 ...")
         digits = getNumberFromImageInternal(filePathName, debug, dilate=True, dilate2=False, erode=False)
 
-    # check if errors occure again and dilate harder if so
+    # check if errors occured again and dilate harder if so
     if(digits_contain_errors(digits)):
         diluteFailed = True
         # Fix for false dil 2!!
-        digits = getNumberFromImageInternal(filePathName, debug, dilate=True, dilate2=False, erode=False)
+        if debug:
+            print("Failed! Trying number detection with dillute 2 ...")
+        digits = getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=True, erode=False)
 
-    # check if errors occure again and erode if so
+    # check if errors occured again and erode if so
     if(digits_contain_errors(digits)):
         diluteFailed2 = True
+        if debug:
+            print("Failed! Trying number detection with erode 1 ...")
         digits = getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False, erode=True)
 
     # return new result without errors or original
     if(digits_contain_errors(digits)):
+        if debug:
+            print("Failed! Returning first try.")
         return digitsOrig
     else:
-        if diluteFailed:
-            if diluteFailed2:
-                print("===============================> SAVED BY ERODE!")
+        if debug:
+            print("Success!")
+            if diluteFailed:
+                if diluteFailed2:
+                    print("===============================> SAVED BY ERODE!")
+                else:
+                    print("===============================> SAVED BY DILUTE2!")
             else:
-                print("===============================> SAVED BY DILUTE2!")
-        else:
-            print("===============================> SAVED BY DILUTE!")
+                print("===============================> SAVED BY DILUTE!")
+
+        # return successful result
         return digits
 
 # INTERNAL FUNCTION TO WRAP THE MAJORITY OF THE FUNCTIONALITY
