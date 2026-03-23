@@ -49,24 +49,24 @@ def getNumberFromImage(filePathName, debug = False):
     diluteFailed2 = False
 
     # check if NAs occure and dilate if so
-    if(not digitsOrig.__contains__("NA")):
+    if(not digits_contain_errors(digitsOrig)):
         return digitsOrig
     else:
         digits = getNumberFromImageInternal(filePathName, debug, dilate=True, dilate2=False, erode=False)
 
-    # check if NAs occure again and dilate harder if so
-    if(digits.__contains__("NA")):
+    # check if errors occure again and dilate harder if so
+    if(digits_contain_errors(digits)):
         diluteFailed = True
         # Fix for false dil 2!!
         digits = getNumberFromImageInternal(filePathName, debug, dilate=True, dilate2=False, erode=False)
 
-    # check if NAs occure again and erode if so
-    if(digits.__contains__("NA")):
+    # check if errors occure again and erode if so
+    if(digits_contain_errors(digits)):
         diluteFailed2 = True
         digits = getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False, erode=True)
 
-    # return new result without NAs or original
-    if(digits.__contains__("NA")):
+    # return new result without errors or original
+    if(digits_contain_errors(digits)):
         return digitsOrig
     else:
         if diluteFailed:
@@ -83,17 +83,6 @@ def getNumberFromImage(filePathName, debug = False):
 def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False, erode=False):
     # load image
     image = cv2.imread(filePathName)
-    
-    # rotate image, to decrease errors due to bad camera placement
-    # later add automatic detection of angle
-    (h, w) = image.shape[:2]
-    center = (w // 2, h // 2)
-    # Degree in clockwise direction
-    angle = 5
-
-    # rotate
-    M = cv2.getRotationMatrix2D(center, angle, 1.0)
-    image = cv2.warpAffine(image, M, (w, h))
 
     # set helper bool to know if char ° is already detected - erase garbage after C
     celsius_char_detected = False
@@ -125,15 +114,11 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
 	
     # extract the thermostat display, apply a perspective transform
     # to it
-
-    # add additinal directional warp to account for bad camera perspective
-    # warpfactor > 0 skews the pictures top to the right, < 0 to the left
-    warpFactor = 0.45
-    warped = four_point_transform(gray, displayCnt.reshape(4, 2))
+    transformed = four_point_transform(gray, displayCnt.reshape(4, 2))
     output = four_point_transform(image, displayCnt.reshape(4, 2))
 
     # replaced with adaptive thresolding to account for poor lighting
-    thresh = cv2.adaptiveThreshold(warped,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
+    thresh = cv2.adaptiveThreshold(transformed,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
             cv2.THRESH_BINARY_INV,61,5)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 5))
     thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
@@ -257,3 +242,26 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
         cv2.waitKey(0)
 
     return digits
+
+def digits_contain_errors(digits) -> bool:
+
+    result = False
+
+    # check for 'NAs'
+    result = result or digits.__contains__("NA")
+
+    # skip the digit counting, if already errors detected
+    if result:
+        return result
+    
+    # count digits detected prior to °: should always be 4
+    counter = 0
+    for d in digits:
+        if(d == '°'):
+            break
+        else:
+            counter += 1
+    
+    result = result or (counter < 4)
+
+    return result
