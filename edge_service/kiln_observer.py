@@ -14,6 +14,7 @@ import os
 import json
 import time
 import argparse
+import requests
 
 # internal imports
 import Number_Detection as nd
@@ -79,8 +80,11 @@ def kiln_observer(api_url, capture_interval, anon_key, x_api_key):
         # push temperature data to server
         if DEBUG:
             print("Uploading data to server ...")
-        upload_successful = api.POSTTemperature(datetime.strptime(time_stamp, "%Y-%m-%d %H-%M-%S").isoformat(), temperature)
-        
+        try:
+            upload_successful = api.POSTTemperature(datetime.strptime(time_stamp, "%Y-%m-%d %H-%M-%S").isoformat(), temperature)
+        except requests.exceptions.RequestException as e:
+            print("Error in kiln_observer: " + str(e))
+
         if not upload_successful:
             print("Error on uploading. Service stopped!")
             break
