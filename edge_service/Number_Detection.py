@@ -117,7 +117,7 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
 
     # add additinal directional warp to account for bad camera perspective
     # warpfactor > 0 skews the pictures top to the right, < 0 to the left
-    warpFactor = 0
+    warpFactor = 0.45
     warped = four_point_transform(gray, displayCnt.reshape(4, 2))
     output = four_point_transform(image, displayCnt.reshape(4, 2))
 
@@ -130,9 +130,9 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
     # use dilate or erode only in second and third try
     if dilate:
         # dilate black areas to connect the parts of 0s and Cs
-        thresh = cv2.dilate(thresh, (7, 7), iterations=2)
+        thresh = cv2.dilate(thresh, (7, 7), iterations=4) # might also try with 2, for some use cases
     elif dilate2:
-        thresh = cv2.dilate(thresh, (7, 7), iterations=4) # might also try with 7, for some use cases
+        thresh = cv2.dilate(thresh, (7, 7), iterations=7) # might also try with 4, for some use cases
     elif erode:
         thresh = cv2.erode(thresh, (7, 7), iterations=3)
 
