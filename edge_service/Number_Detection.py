@@ -128,47 +128,15 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
             displayCnt = approx
             break
 
-    # find rotation
+    # find stable rotation bounding box
     rect = cv2.minAreaRect(displayCnt)
-    angle = rect[-1]
-
-    # correct angle with opencv
-    if angle < -45:
-        angle = 90 + angle
-
-    (h, w) = image.shape[:2]
-    center = (w // 2, h // 2)
-
-    # get rotation matrix
-    M = cv2.getRotationMatrix2D(center, angle, 1.0)
-
-    # rotate image
-    rotated = cv2.warpAffine(image, M, (w, h))
-    gray_rotated = cv2.warpAffine(gray, M, (w, h))
-
-    # transform contour
     box = cv2.boxPoints(rect)
-    box = np.int32(box)
-
-    # transform points
-    ones = np.ones(shape=(len(box), 1))
-    points_ones = np.hstack([box, ones])
-    transformed_points = M.dot(points_ones.T).T
-
-    # warp perspective
-    rect_pts = transformed_points.astype("float32")
+    box = np.array(box, dtype="float32")
 
     # sort points
-    s = rect_pts.sum(axis=1)
-    rect_sorted = np.zeros((4, 2), dtype="float32")
-    rect_sorted[0] = rect_pts[np.argmin(s)]
-    rect_sorted[2] = rect_pts[np.argmax(s)]
+    rect_sorted = order_points(box)
 
-    diff = np.diff(rect_pts, axis=1)
-    rect_sorted[1] = rect_pts[np.argmin(diff)]
-    rect_sorted[3] = rect_pts[np.argmax(diff)]
-
-    # calculate target size
+    # calculate target sizes
     widthA = np.linalg.norm(rect_sorted[2] - rect_sorted[3])
     widthB = np.linalg.norm(rect_sorted[1] - rect_sorted[0])
     maxWidth = int(max(widthA, widthB))
@@ -177,6 +145,7 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
     heightB = np.linalg.norm(rect_sorted[0] - rect_sorted[3])
     maxHeight = int(max(heightA, heightB))
 
+    # define target rectangle
     dst = np.array([
         [0, 0],
         [maxWidth - 1, 0],
@@ -184,11 +153,10 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
         [0, maxHeight - 1]
     ], dtype="float32")
 
-    # Warp
-    M_persp = cv2.getPerspectiveTransform(rect_sorted, dst)
-
-    transformed = cv2.warpPerspective(gray_rotated, M_persp, (maxWidth, maxHeight))
-    output = cv2.warpPerspective(rotated, M_persp, (maxWidth, maxHeight))
+    # transform perspective
+    M = cv2.getPerspectiveTransform(rect_sorted, dst)
+    transformed = cv2.warpPerspective(gray, M, (maxWidth, maxHeight))
+    output = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
 
     # replaced with adaptive thresolding to account for poor lighting
     thresh = cv2.adaptiveThreshold(transformed,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
@@ -197,13 +165,14 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
     thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
 
     # use dilate or erode only in second and third try
+    elips_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
     if dilate:
         # dilate black areas to connect the parts of 0s and Cs
-        thresh = cv2.dilate(thresh, (7, 7), iterations=4) # might also try with 2, for some use cases
+        thresh = cv2.dilate(thresh, elips_kernel, iterations=4) # might also try with 2, for some use cases
     elif dilate2:
-        thresh = cv2.dilate(thresh, (7, 7), iterations=10) # might also try with 4, for some use cases
+        thresh = cv2.dilate(thresh, elips_kernel, iterations=10) # might also try with 4, for some use cases
     elif erode:
-        thresh = cv2.erode(thresh, (7, 7), iterations=3)
+        thresh = cv2.erode(thresh, elips_kernel, iterations=3)
 
     #cv2.imshow("thresh", thresh)
     if debug:
@@ -338,3 +307,17 @@ def digits_contain_errors(digits) -> bool:
     result = result or (counter < 4)
 
     return result
+
+# function to sort points
+def order_points(pts):
+    rect = np.zeros((4, 2), dtype="float32")
+
+    s = pts.sum(axis=1)
+    rect[0] = pts[np.argmin(s)]  # top-left
+    rect[2] = pts[np.argmax(s)]  # bottom-right
+
+    diff = np.diff(pts, axis=1)
+    rect[1] = pts[np.argmin(diff)]  # top-right
+    rect[3] = pts[np.argmax(diff)]  # bottom-left
+
+    return rect
