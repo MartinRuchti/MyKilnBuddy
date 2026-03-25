@@ -121,18 +121,42 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
     for c in cnts:
         # approximate the contour
         peri = cv2.arcLength(c, True)
-        approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+        approx = cv2.approxPolyDP(c, 0.01 * peri, True)
+        
+        if debug:
+            debug_image = image
+            cv2.drawContours(debug_image, [approx.astype(int)], -1, (0,255,0), 2)
+            cv2.imshow("blurred", debug_image)
+            cv2.waitKey(0)
+            
         # if the contour has four vertices, then we have found
-        # the thermostat display
-        if len(approx) == 4:
+        # the thermostat display 
+        if len(approx) == 8:
             displayCnt = approx
             break
 
     # find stable rotation bounding box
+    hull = cv2.convexHull(approx)
     rect = cv2.minAreaRect(displayCnt)
-    box = cv2.boxPoints(rect)
-    box = np.array(box, dtype="float32")
+    
+    # make rectangle smaller, to only have the display in it
+    # get center, width to size
+    (center), (w, h), angle = rect
 
+    scaling_w = 0.86  # factor for scaling
+    scaling_h = 0.67  # factor for scaling
+    shift_x = 7.0
+
+    w_new = max(1, scaling_w*w)
+    h_new = max(1, scaling_h*h)
+    center = (center[0] + shift_x, center[1])
+
+    rect_smaller = (center, (w_new, h_new), angle)
+
+    # get corner nodes
+    box = cv2.boxPoints(rect_smaller)
+    box = np.array(box, dtype="float32")
+    
     # sort points
     rect_sorted = order_points(box)
 
@@ -165,15 +189,18 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
     thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
 
     # use dilate or erode only in second and third try
-    elips_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+    #kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2))
+    kernel = np.ones((4, 1), np.uint8)
     if dilate:
         # dilate black areas to connect the parts of 0s and Cs
-        thresh = cv2.dilate(thresh, elips_kernel, iterations=4) # might also try with 2, for some use cases
+        thresh = cv2.dilate(thresh, kernel, iterations=3) # might also try with 2, for some use cases
     elif dilate2:
-        thresh = cv2.dilate(thresh, elips_kernel, iterations=10) # might also try with 4, for some use cases
+        thresh = cv2.dilate(thresh, kernel, iterations=4) # might also try with 4, for some use cases
     elif erode:
-        thresh = cv2.erode(thresh, elips_kernel, iterations=3)
-
+        thresh = cv2.erode(thresh, kernel, iterations=2)
+    else:
+        thresh = cv2.dilate(thresh, kernel, iterations=2)
+               
     #cv2.imshow("thresh", thresh)
     if debug:
         newfileName = str.split(filePathName, '.')[0] + "__THD.jpg"
@@ -191,9 +218,19 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
         # compute the bounding box of the contour
         (x, y, w, h) = cv2.boundingRect(c)
         # if the contour is sufficiently large, it must be a digit
-        # change to besser represent digits
-        if w >= 10 and (h >= 30 and h <= 80):
+        # change to better represent digits
+        roi = thresh[y:y + h, x:x + w]
+        
+        if debug:
+            print("W: " + str(w))
+            print("H: " + str(h))
+            
+        # check if roi size is reasonable
+        if ((min(roi.shape) > 0) and (roi.shape[0] > 10)):
             digitCnts.append(c)
+            
+            if debug:
+                print("added")
 
     # sort the contours from left-to-right, then initialize the
     # actual digits themselves
@@ -202,44 +239,74 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
     digits = []
 
     # loop over each of the digits
+    if debug:
+        print("Now iterating digits ...")
+        
     for c in digitCnts:
 
         # load original values
         (x, y, w, h) = cv2.boundingRect(c)
-
+        
+        # set min w and h to avoid crashes
+        if(w < 5):
+            w = 5.0
+        if(h < 8):
+            h = 8.0
+            
         # SPECIAL TREATMENT FOR ° and 1
+        
+        # variable to store, if 1 is detected
+        one_detected = False
+        
+        if debug:
+            print("Checking ROIs ...")
+        
         # if h too small, it is the ° and h has to be enlarged to not have a 0
+        # if it is very small, it is likely noise
         if(h < 50):
             h = int(1.8*h)
         
         # if w is too small, it is the 1 and w has to be extended + ref point has to be moved
         if(w < 20):
-            if debug: print ("found 1. w was: " + str(w))
-            factor = 3
-            x = x - int((factor-1)*w)
+            factor = 3.0
+            # check, if x becomes negative
+            x = max(x - int((factor-1)*w),0)
             w = int(factor*w)
+            
+            # set 1 detected for later treatment
+            one_detected = True
+            
         # END SPECIAL TREATMENT
-
+        
         # extract the digit ROI
         roi = thresh[y:y + h, x:x + w]
 
         # compute the width and height of each of the 7 segments
         # we are going to examine
         (roiH, roiW) = roi.shape
-        (dW, dH) = (int(roiW * 0.25), int(roiH * 0.15))
-        dHC = int(roiH * 0.05)
+        
+        if debug:
+            print("Creating segments ...")
+            
+        (dW, dH) = (int(roiW * 0.33), int(roiH * 0.15))
+        dHC = int(roiH * 0.1)
+        
         # define the set of 7 segments
         segments = [
             ((0, 0), (w, dH)),	# top
             ((0, 0), (dW, h // 2)),	# top-left
             ((w - dW, 0), (w, h // 2)),	# top-right
-            ((0, (h // 2) - dHC) , (w, (h // 2) + dHC)), # center
+            ((0 + dW , (h // 2) - dHC) , (w - dW , (h // 2) + dHC)), # center
             ((0, h // 2), (dW, h)),	# bottom-left
             ((w - dW, h // 2), (w, h)),	# bottom-right
             ((0, h - dH), (w, h))	# bottom
         ]
         on = [0] * len(segments)
 
+        if debug:
+            print("Checking segments ...")
+            print("Segments: " + str(segments))
+            
         # loop over the segments
         for (i, ((xA, yA), (xB, yB))) in enumerate(segments):
             # extract the segment ROI, count the total number of
@@ -254,22 +321,44 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
                 on[i]= 1
 
         # lookup the digit and draw it on the image
-        #check if tuple is contained
-        if DIGITS_LOOKUP.__contains__(tuple(on)):
-            digit = DIGITS_LOOKUP[tuple(on)]
-            if(digit == "°"): celsius_char_detected = True
+        if debug:
+            print("Evaluating segments for chars ...")
+            
+        # check if it was a 1 specially, since detection is unstable by segments
+        if one_detected:
+            digit = "1"
+        
+        # check active segments, if not 1
         else:
-            # ToDo: better replacement later
-            if celsius_char_detected:
-                digit = "C"
-                break
+            #check if tuple is contained
+            if DIGITS_LOOKUP.__contains__(tuple(on)):
+                digit = DIGITS_LOOKUP[tuple(on)]
+                if(digit == "°"): celsius_char_detected = True
             else:
-                digit = "NA"
+                # ToDo: better replacement later
+                if celsius_char_detected:
+                    digit = "C"
+                    break
+                else:
+                    digit = "NA"
+        
+        if debug:
+            print("Showing results ...")
+            
+        if debug and (min(roi.shape) > 0):
+            roi_debug = cv2.cvtColor(roi.copy(), cv2.COLOR_GRAY2BGR)
+            for (i, ((xA, yA), (xB, yB))) in enumerate(segments):
+                cv2.rectangle(roi_debug, (xA, yA), (xB, yB), (0, 255, 0), 1)
+
+            cv2.imshow("Segments", roi_debug)
+            
+            print("Segment: " + str(on))
+            cv2.waitKey(0)
         
         # add display of detected areas in picture for debug purposes
         digits.append(digit)
         cv2.rectangle(output, (x, y), (x + w, y + h), (0, 255, 0), 1)
-        cv2.putText(output, str(digit), (x - 2, y - 2),
+        cv2.putText(output, str(digit), (x + 2, y + 10),
             cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 0), 2)
 
     # show debug output
@@ -287,13 +376,12 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
 
 def digits_contain_errors(digits) -> bool:
 
-    result = False
-
     # check for 'NAs'
-    result = result or digits.__contains__("NA")
+    result = digits.__contains__("NA")
 
     # skip the digit counting, if already errors detected
     if result:
+        print("NAs detected")
         return result
     
     # count digits detected prior to °: should always be 4
@@ -306,6 +394,7 @@ def digits_contain_errors(digits) -> bool:
     
     result = result or (counter < 4)
 
+    print("No NAs detected. Digits counted: " + str(counter) + ". Errors: " + str(result))
     return result
 
 # function to sort points
@@ -321,3 +410,4 @@ def order_points(pts):
     rect[3] = pts[np.argmax(diff)]  # bottom-left
 
     return rect
+
