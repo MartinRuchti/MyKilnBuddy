@@ -220,17 +220,10 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
         # if the contour is sufficiently large, it must be a digit
         # change to better represent digits
         roi = thresh[y:y + h, x:x + w]
-        
-        if debug:
-            print("W: " + str(w))
-            print("H: " + str(h))
             
         # check if roi size is reasonable
         if ((min(roi.shape) > 0) and (roi.shape[0] > 10)):
             digitCnts.append(c)
-            
-            if debug:
-                print("added")
 
     # sort the contours from left-to-right, then initialize the
     # actual digits themselves
@@ -317,7 +310,7 @@ def getNumberFromImageInternal(filePathName, debug, dilate=False, dilate2=False,
             area = (xB - xA) * (yB - yA)
             # if the total number of non-zero pixels is greater than
             # 50% of the area, mark the segment as "on"
-            if total / float(area) > 0.5:
+            if total / float(area) > 0.6:
                 on[i]= 1
 
         # lookup the digit and draw it on the image
