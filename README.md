@@ -25,10 +25,14 @@ source venv/bin/activate
 install dependencies:
 ```
 sudo apt install guvcview
-``` (this installs guvcview in the system)
+``` 
+
+(this installs guvcview in the system)
+
 ```
 pip install requests
 ``` 
+
 (this installs python-requests in the virtual environment)
 
 ---
