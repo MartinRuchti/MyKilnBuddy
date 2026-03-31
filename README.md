@@ -13,18 +13,23 @@ MyKilnBuddy is a software, with which you can monitor your analog pottery firing
 
 ## Installation of Edge_Service (on the device, that gets the pictures of your kiln display)
 Pull code via git:
-```git clone https://github.com/MartinRuchti/MyKilnBuddy```
-
-Create virtual environment
 ```
+git clone https://github.com/MartinRuchti/MyKilnBuddy
 ```
 
-Activate virtual environment
-```source venv/bin/activate```
+Create virtual environment. Activate virtual environment
+```
+source venv/bin/activate
+```
 
 install dependencies:
-```sudo apt install guvcview``` (this installs guvcview in the system)
-```pip install requests``` (this installs python-requests in the virtual environment)
+```
+sudo apt install guvcview
+``` (this installs guvcview in the system)
+```
+pip install requests
+``` 
+(this installs python-requests in the virtual environment)
 
 ---
 
@@ -45,14 +50,18 @@ After that, create a key named 'DATAPOINTS_API_KEY' in the secrets tab of your e
 
 ## Usage of Edge_Service
 Activate virtual environment:
-```source venv/bin/activate```
+```
+source venv/bin/activate
+```
 
 Run the display observer, that sends the data to the server:
-```python3 <your-directory-to-the-code>/MyKilnBuddy/edge_service/kiln_observer.py \
+```
+python3 <your-directory-to-the-code>/MyKilnBuddy/edge_service/kiln_observer.py \
 -u "your-api-url" \
 -t your-timeinterval-between-data-points-in-milliseconds \
 -a1 "your-anon-key" \
--a2 "your-x-api-key" \```
+-a2 "your-x-api-key" \
+```
 
 You can also add -v to activate verbose mode. Also, you can add the command to your startup in ```startup.sh```.
 
