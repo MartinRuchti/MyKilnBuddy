@@ -35,6 +35,26 @@ pip install requests
 
 (this installs python-requests in the virtual environment)
 
+
+In order for your edge service to run on startup, you need to change the placeholders in the file MyKilnBuddy/edge_service/mykilnbuddy.service. Just replace the terms in brackets with your keys (not the nicest way, but should be allright for this project). 
+Then, copy the .service file to the systemd folder
+
+```
+sudo cp /home/<user>/MyKilnBuddy/edge_service/mykilnbuddy.service /etc/systemd/system/mykilnbuddy.service
+``` 
+
+activate the service
+
+```
+sudo systemctl enable mykilnbuddy.service
+``` 
+
+After restart, you can view the service output either via your server data, or by viewing the console output via
+
+```
+journalctl -u mykilnbuddy -f
+``` 
+
 ---
 
 ## Installation of Mobile App (where you receive your data)
