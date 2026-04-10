@@ -1,0 +1,14 @@
+[Unit]
+Description=Running the MyKilnBuddy utility for capturing kiln temperatures
+Wants=multi-user.target
+After=multi-user.target
+
+[Service]
+Type=simple
+User=<user>
+WorkingDirectory=/home/<user>/MyKilnBuddy/edge_service
+ExecStart=/home/<user>/venv/bin/python3 /home/<user>/MyKilnBuddy/edge_service/kiln_observer.py -u "<your api url>" -t 10000 -a1 "<your anon key>" -a2 "<your x-api-key>" 
+Restart=always
+
+[Install]
+WantedBy=multi-user.target 
